@@ -49,6 +49,7 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
     CacheClient cacheClient;
     @Override
     public Result queryById(Long id) {
+
         Shop shop = cacheClient.queryWithPassThrough(CACHE_SHOP_KEY, id, Shop.class, id2 -> getById(id2), CACHE_SHOP_TTL, TimeUnit.MINUTES);
         //缓存穿透
         //Shop shop = queryWithPassThrough(id);
