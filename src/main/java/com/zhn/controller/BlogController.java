@@ -1,17 +1,13 @@
 package com.zhn.controller;
 
-
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zhn.dto.Result;
 import com.zhn.dto.UserDTO;
 import com.zhn.entity.Blog;
-import com.zhn.entity.User;
 import com.zhn.service.IBlogService;
-import com.zhn.service.IUserService;
 import com.zhn.utils.SystemConstants;
 import com.zhn.utils.UserHolder;
 import org.springframework.web.bind.annotation.*;
-
 import javax.annotation.Resource;
 import java.util.List;
 
@@ -29,17 +25,14 @@ public class BlogController {
     @Resource
     private IBlogService blogService;
 
-
     @PostMapping
     public Result saveBlog(@RequestBody Blog blog) {
-        // 获取登录用户
         UserDTO user = UserHolder.getUser();
         blog.setUserId(user.getId());
-        // 保存探店博文
         blogService.save(blog);
-        // 返回id
-        return Result.ok(blog.getId());
+        return Result.ok(blog);
     }
+
 
     @PutMapping("/like/{id}")
     public Result likeBlog(@PathVariable("id") Long id) {
@@ -62,13 +55,32 @@ public class BlogController {
     public Result queryHotBlog(@RequestParam(value = "current", defaultValue = "1") Integer current) {
         return blogService.queryHotBlog(current);
     }
+
     @GetMapping("/{id}")
-    public Result queryBlogById(@PathVariable("id") Long id){
+    public Result queryBlogById(@PathVariable("id") Long id) {
         return blogService.queryBlogById(id);
     }
+
     @GetMapping("/likes/{id}")
-    public Result queryBlogLikes(@PathVariable("id") Long id){
+    public Result queryBlogLikes(@PathVariable("id") Long id) {
         return blogService.queryBlogLikes(id);
     }
+
+    @GetMapping("/of/user")
+    public Result queryBlogByUserId(
+            @RequestParam(value = "current", defaultValue = "1") Integer current,
+            @RequestParam("id") Long id) {
+        // 根据用户查询
+        Page<Blog> page = blogService.query()
+                .eq("user_id", id).page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
+        // 获取当前页数据
+        List<Blog> records = page.getRecords();
+        return Result.ok(records);
+    }
+
 }
+
+
+
+
 

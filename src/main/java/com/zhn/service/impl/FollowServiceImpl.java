@@ -29,4 +29,31 @@ import java.util.stream.Collectors;
  */
 @Service
 public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> implements IFollowService {
+    @Override
+    public Result follow(Long followUserId, Boolean isFollow) {
+        //获取用户
+        Long userId = UserHolder.getUser().getId();
+        //1.判断关注还是取关
+        if(isFollow){
+            //2.关注，新增数据
+            Follow follow = new Follow();
+            follow.setUserId(userId);
+            follow.setFollowUserId(followUserId);
+            save(follow);
+        }else {
+            remove(new QueryWrapper<Follow>().eq("user_id",userId)
+                    .eq("follow_user_id",followUserId));
+        }
+        //3.取关，删除
+        return Result.ok();
+    }
+
+    @Override
+    public Result isFollow(Long followUserId) {
+        //获取用户
+        Long userId = UserHolder.getUser().getId();
+        Integer count = query().eq("user_id", userId)
+                .eq("follow_user_id", followUserId).count();
+        return Result.ok(count>0);
+    }
 }

@@ -1,12 +1,10 @@
 package com.zhn.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.util.BooleanUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.zhn.dto.Result;
-import com.zhn.dto.ScrollResult;
 import com.zhn.dto.UserDTO;
 import com.zhn.entity.Blog;
 import com.zhn.entity.Follow;
@@ -18,11 +16,8 @@ import com.zhn.service.IUserService;
 import com.zhn.utils.SystemConstants;
 import com.zhn.utils.UserHolder;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
-
 import javax.annotation.Resource;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -43,6 +38,8 @@ import static com.zhn.utils.RedisConstants.FEED_KEY;
 public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IBlogService {
     @Resource
     private IUserService userService;
+    @Resource
+    private IFollowService followService;
     @Resource
     StringRedisTemplate stringRedisTemplate;
     @Override
@@ -138,6 +135,8 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         //4.返回
         return Result.ok(userDTOS);
     }
+
+
 
     public void queryBlogUser(Blog blog){
         Long userId = blog.getUserId();

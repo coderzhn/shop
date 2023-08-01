@@ -20,6 +20,9 @@ spring:
         time-between-eviction-runs: 10s
   jackson:
     default-property-inclusion: non_null # JSON处理时忽略非空字段
+  mvc:
+    servlet:
+      load-on-startup: 1
 mybatis-plus:
   type-aliases-package: com.zhn.entity # 别名扫描包
 logging:
