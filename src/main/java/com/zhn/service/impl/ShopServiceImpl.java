@@ -30,6 +30,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 import static com.zhn.utils.RedisConstants.*;
 
@@ -205,6 +206,57 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         stringRedisTemplate.delete(CACHE_SHOP_KEY+shop.getId());
         return Result.ok();
     }
+
+    @Override
+    public Result queryShopByType(Integer typeId, Integer current, Double x, Double y) {
+        //1.是否需要根据坐标查询
+        if(x == null || y == null){
+            // 根据类型分页查询
+            Page<Shop> page = query()
+                    .eq("type_id", typeId)
+                    .page(new Page<>(current, SystemConstants.DEFAULT_PAGE_SIZE));
+            return Result.ok(page.getRecords());
+        }
+        //2.计算分页参数
+        String key = SHOP_GEO_KEY + typeId;
+        int from = (current - 1) * SystemConstants.DEFAULT_PAGE_SIZE;
+        int end = current * SystemConstants.DEFAULT_PAGE_SIZE;
+        //3.查询redis，按照距离排序分页 结果：shopId、distance
+        GeoResults<RedisGeoCommands.GeoLocation<String>> results = stringRedisTemplate.opsForGeo()
+                .search(
+                        key,
+                        GeoReference.fromCoordinate(x, y),
+                        new Distance(5000),
+                        RedisGeoCommands.GeoRadiusCommandArgs.newGeoRadiusArgs().includeDistance().limit(end)
+                );
+        //4.解析出id
+        if(results == null){
+            return Result.ok();
+        }
+        List<GeoResult<RedisGeoCommands.GeoLocation<String>>> list = results.getContent();
+        if(list.size() <= from){
+            //没有下一页
+            return Result.ok(Collections.emptyList());
+        }
+        Map<String,Distance> distanceMap = new HashMap<>(list.size());
+        List<Long> ids = new ArrayList<>(list.size());
+        //4.1 截取from到end的部分
+        list.stream().skip(from).forEach(result -> {
+            String shopIdStr = result.getContent().getName();
+            ids.add(Long.valueOf(shopIdStr));
+            Distance distance = result.getDistance();
+            distanceMap.put(shopIdStr,distance);
+        });
+        //5.根据id查询Shop
+        String idsStr = StrUtil.join(",",ids);
+        List<Shop> shops = query().in("id", ids).last("ORDER BY FIELD(id," + idsStr + ")").list();
+        for(Shop shop:shops){
+            shop.setDistance(distanceMap.get(shop.getId().toString()).getValue());
+        }
+        //6.返回数据
+        return Result.ok(shops);
+    }
+
     private boolean tryLock(String key){
         Boolean flag = stringRedisTemplate.opsForValue().setIfAbsent(key, "1", 10, TimeUnit.SECONDS);
         return BooleanUtil.isTrue(flag);
