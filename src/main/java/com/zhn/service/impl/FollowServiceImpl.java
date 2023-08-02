@@ -29,20 +29,29 @@ import java.util.stream.Collectors;
  */
 @Service
 public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> implements IFollowService {
+    @Resource
+    StringRedisTemplate stringRedisTemplate;
+    @Resource
+    IUserService userService;
     @Override
     public Result follow(Long followUserId, Boolean isFollow) {
         //获取用户
         Long userId = UserHolder.getUser().getId();
+        String key = "follows:" + userId;
         //1.判断关注还是取关
         if(isFollow){
             //2.关注，新增数据
             Follow follow = new Follow();
             follow.setUserId(userId);
             follow.setFollowUserId(followUserId);
-            save(follow);
+            boolean isSuccess = save(follow);
+            if(isSuccess){
+                stringRedisTemplate.opsForSet().add(key,followUserId.toString());
+            }
         }else {
             remove(new QueryWrapper<Follow>().eq("user_id",userId)
                     .eq("follow_user_id",followUserId));
+            stringRedisTemplate.opsForSet().remove(key,followUserId.toString());
         }
         //3.取关，删除
         return Result.ok();
@@ -53,7 +62,27 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
         //获取用户
         Long userId = UserHolder.getUser().getId();
         Integer count = query().eq("user_id", userId)
-                .eq("follow_user_id", followUserId).count();
+                .eq("fsollow_user_id", followUserId).count();
         return Result.ok(count>0);
+    }
+
+    @Override
+    public Result followCommons(Long id) {
+        //1.获取当前用户
+        Long userId = UserHolder.getUser().getId();
+        String key1 = "follows:" + userId;
+        String key2 = "follows:" + id;
+        //2.求交集
+        Set<String> intersect = stringRedisTemplate.opsForSet().intersect(key1, key2);
+        if(intersect == null || intersect.isEmpty()){
+            return Result.ok(Collections.emptyList());
+        }
+        //3.解析id集合
+        List<Long> ids = intersect.stream().map(Long::valueOf).collect(Collectors.toList());
+        List<UserDTO> users = userService.listByIds(ids)
+                .stream()
+                .map(user -> BeanUtil.copyProperties(user, UserDTO.class))
+                .collect(Collectors.toList());
+        return Result.ok(users);
     }
 }

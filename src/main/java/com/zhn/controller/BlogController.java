@@ -27,10 +27,7 @@ public class BlogController {
 
     @PostMapping
     public Result saveBlog(@RequestBody Blog blog) {
-        UserDTO user = UserHolder.getUser();
-        blog.setUserId(user.getId());
-        blogService.save(blog);
-        return Result.ok(blog);
+        return blogService.saveBlog(blog);
     }
 
 
@@ -77,7 +74,10 @@ public class BlogController {
         List<Blog> records = page.getRecords();
         return Result.ok(records);
     }
-
+    @GetMapping("/of/follow")
+    public Result queryBlogOfFollow(@RequestParam("lastId") Long max,@RequestParam(value = "offset",defaultValue = "0") Integer offset){
+        return blogService.queryBlogOfFollow(max,offset);
+    }
 }
 
 
